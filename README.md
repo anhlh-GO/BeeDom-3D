@@ -25,7 +25,7 @@ Chạm tổ ong, ong cùng màu bay lên rút ốc khỏi khối 3D (Screwdom 3D
 Magnet / Hammer / Shuffle.
 
 - **Web:** mỗi lần push lên `main`, workflow `Web (GitHub Pages)` build `dist/index.html` và đăng lên GitHub Pages
-  (`https://<user>.github.io/domdom/`). Lần đầu cần bật: Settings → Pages → Source: **GitHub Actions**.
+  (https://anhlh-go.github.io/BeeDom-3D/). Lần đầu cần bật: Settings → Pages → Source: **GitHub Actions**.
 - **APK:** workflow `Android APK` bọc bản web bằng Capacitor (chỉ cài trong CI) và build APK debug; tải ở Release
   **apk-latest** hoặc ở artifact của lần chạy.
 - Chỉnh độ khó: `CURVE` trong `src/levels.ts`, rồi `node scripts/tune.ts --write`.
