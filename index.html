@@ -2,13 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- Add to Home Screen: open full screen as an app (iOS + Android), status bar over the sky -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Bee Screw" />
+    <meta name="theme-color" content="#a3d5f5" />
     <title>Bee:Screw</title>
     <style>
-      html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3f8; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #a3d5f5; overscroll-behavior: none;
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
       canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
       #sbh-probe { position: fixed; top: 0; left: 0; width: 1px; visibility: hidden; pointer-events: none;
         height: max(var(--sbh, 0px), env(safe-area-inset-top, 0px)); }
+      #sbb-probe { position: fixed; bottom: 0; left: 0; width: 1px; visibility: hidden; pointer-events: none;
+        height: env(safe-area-inset-bottom, 0px); }
     </style>
   </head>
   <body>
@@ -17,6 +26,7 @@
     <canvas id="game"></canvas>
     <canvas id="fx" style="pointer-events:none"></canvas>
     <div id="sbh-probe"></div>
+    <div id="sbb-probe"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

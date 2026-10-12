@@ -27,6 +27,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Add to Home Screen: manifest, icons and an offline service worker, for the Pages build only
+      # (the Falcon build stays a single dist/index.html)
+      - name: Add the web-app files
+        run: |
+          cp pwa/manifest.webmanifest pwa/sw.js pwa/icon-*.png dist/
+          sed -i '/<\/head>/e cat pwa/inject.html' dist/index.html
+          grep -c 'rel="manifest"' dist/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

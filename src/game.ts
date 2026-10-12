@@ -168,7 +168,15 @@ const L = {
   slotY: 0, slotR: 0, slotGap: 0, viewTop: 0, viewBottom: 0, boosterR: 0, viewSize: 0,
   /** reference → screen scale, left edge of the reference column, top anchor */
   k: 1, ox: 0, top: 0, tokenW: 1,
+  /** bottom safe area (home indicator) */
+  sbb: 0,
 };
+
+/** Height of the iPhone home-indicator strip (0 elsewhere): the toolbar buttons stay above it. */
+function safeBottom(): number {
+  const probe = document.getElementById('sbb-probe');
+  return probe ? probe.getBoundingClientRect().height : 0;
+}
 
 function safeTop(): number {
   const probe = document.getElementById('sbh-probe');
@@ -183,10 +191,14 @@ function safeTop(): number {
 function layout(): void {
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const W = Math.min(w, h * (REF.w / REF.h));
+  // fit the reference column into the height left between the notch and the home indicator
+  const sbh0 = safeTop();
+  const sbb = safeBottom();
+  const W = Math.min(w, Math.max(1, h - Math.max(0, sbh0 - 20) - sbb) * (REF.w / REF.h));
   const k = W / REF.w;
   L.w = w; L.h = h; L.k = k; L.ox = (w - W) / 2;
-  L.sbh = safeTop();
+  L.sbh = sbh0;
+  L.sbb = sbb;
   L.top = Math.max(0, L.sbh - 20 * k);
   L.u = W;
   L.cx = X(457.5);
@@ -231,7 +243,7 @@ function paintBackground(): void {
 /** REF x → screen x; REF y → screen y anchored to the top (HUD) or the bottom (slots, grid, toolbar). */
 const X = (x: number): number => L.ox + x * L.k;
 const YT = (y: number): number => L.top + y * L.k;
-const YB = (y: number): number => L.h - (REF.h - y) * L.k;
+const YB = (y: number): number => L.h - L.sbb - (REF.h - y) * L.k;
 
 const slotX = (i: number): number => L.cx + (i - (slots.length - 1) / 2) * L.slotGap;
 const colX = (c: number): number => L.cx + (c - (columns.length - 1) / 2) * L.colGap;
