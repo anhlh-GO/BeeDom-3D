@@ -1,0 +1,60 @@
+# Wrap the web build in a Capacitor Android shell and build an APK.
+# Capacitor is installed only here (--no-save), so package.json and the Falcon IDE publish stay untouched.
+# Output: an artifact on every run, and the rolling pre-release "apk-latest" with the APK attached.
+# The APK is debug-signed (installable for testing); a store build needs a release keystore.
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Create the Android project
+        run: |
+          npx cap add android
+          # portrait only
+          sed -i 's/<activity/<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../bee-screw.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bee-screw-apk
+          path: bee-screw.apk
+
+      - name: Publish to the "apk-latest" pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest bee-screw.apk --prerelease \
+            --title "Bee Screw APK (latest build)" \
+            --notes "Debug APK built from ${GITHUB_SHA::7}. Web version: https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"

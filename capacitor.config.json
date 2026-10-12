@@ -1,0 +1,6 @@
+{
+  "appId": "com.lahagame.beescrew",
+  "appName": "Bee Screw",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#a3d5f5" }
+}
