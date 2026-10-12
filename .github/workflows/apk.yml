@@ -16,17 +16,18 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
 
+      # the Ubuntu runner ships the Android SDK; just point Gradle at it
+      - run: echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run build
       - run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
