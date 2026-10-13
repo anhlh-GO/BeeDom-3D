@@ -21,10 +21,10 @@ for (let i = range[0] - 1; i < range[1]; i++) {
   const tense = base.diff === 'hard' || base.diff === 'super';
   const h0 = HIVES[base.diff];
   let best = { seed: 1, hives: h0, mix: base.mix, late: 0.65, rate: -1, loss: 0, d: 9, screws: 0 };
-  search: for (const dh of base.diff === 'easy' ? [0, -3, -6, 3] : [0, 3, 6, -2]) {
+  search: for (const dh of base.diff === 'easy' ? [0, -3, -6, 3] : [0, 3, -3, 5]) {
     for (const mix of tense ? [0.7, 1.0] : [base.mix, base.mix + 0.25]) {
       for (const late of tense ? [0.85, 0.88, 0.8] : [1]) {
-        for (let seed = 1; seed <= 25; seed++) {
+        for (let seed = 1; seed <= 18; seed++) {
           const def = { ...base, hives: h0 + dh, mix, late, seed };
           let spec;
           try { spec = generate(i, def, seed); } catch { continue; }

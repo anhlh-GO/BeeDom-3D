@@ -10,8 +10,8 @@ import { BeeLayer, type BeePose } from './bees3d.ts';
 import { audio, haptic, sfx, unlockAudio } from './audio.ts';
 import { FONT, button, coin, coinPile, hand, rr, screwHead, star, text } from './art.ts';
 import {
-  POS, REF, background, boosterButton, boosterIcon, coinDisplay, hiveToken, levelSign, pauseButton, returnHive,
-  screwCounter, slotRing, toolbar, type BoosterIcon,
+  POS, REF, background, boosterButton, boosterIcon, coinDisplay, hiveToken, label, levelSign, panel, pauseButton, returnHive,
+  screwCounter, slotRing, starCoin, sunburst, toggle, toolbar, toyButton, type BoosterIcon, type ToyKind,
 } from './hud.ts';
 
 export const LEVEL_COUNT = LEVELS.length;
@@ -170,6 +170,8 @@ const L = {
   k: 1, ox: 0, top: 0, tokenW: 1,
   /** bottom safe area (home indicator) */
   sbb: 0,
+  /** visible rows of waiting hives (4 or 5) */
+  rows: 4,
 };
 
 /** Height of the iPhone home-indicator strip (0 elsewhere): the toolbar buttons stay above it. */
@@ -208,11 +210,14 @@ function layout(): void {
   L.barTop = YB(POS.bar.y);
   L.barH = h - L.barTop;
   L.boosterR = POS.boosters.r * k;
-  L.tokenW = POS.grid.w * k;
+  // 4 rows of waiting hives, or 5 on levels with deep columns (smaller hives, tighter rows)
+  const deepCols = Math.max(0, ...(spec?.columns ?? []).map((c) => c.length)) >= 5;
+  L.rows = deepCols ? 5 : 4;
+  L.tokenW = (deepCols ? 108 : POS.grid.w) * k;
   L.hiveR = L.tokenW / 2;
-  L.rowGap = POS.grid.dy * k;
+  L.rowGap = (deepCols ? 99 : POS.grid.dy) * k;
   L.colGap = POS.grid.dx * k;
-  L.gridTop = YB(POS.grid.y0);
+  L.gridTop = YB(deepCols ? 1030 : POS.grid.y0);
   L.slotR = POS.slots.r * k;
   L.slotY = YB(POS.slots.y);
   const n = Math.max(5, slots.length);
@@ -527,7 +532,7 @@ function buyBooster(key: BoosterKey): void {
 /** Magnet: which hive is under the finger (grid or slot)? */
 function hiveAt(x: number, y: number): { hive: HiveLive; slot: number; col: number; row: number; x: number; y: number } | null {
   for (let c = 0; c < columns.length; c++) {
-    for (let r = 0; r < Math.min(columns[c].length, POS.grid.rows); r++) {
+    for (let r = 0; r < Math.min(columns[c].length, L.rows); r++) {
       if (Math.abs(x - colX(c)) < L.colGap / 2 && Math.abs(y - rowY(r)) < L.rowGap / 2) return { hive: columns[c][r], slot: -1, col: c, row: r, x: colX(c), y: rowY(r) };
     }
   }
@@ -683,12 +688,12 @@ function updateBoosters(dt: number): void {
     shuffleFx.t += dt;
     if (Math.random() < dt * 14) {
       const c = Math.floor(Math.random() * columns.length);
-      const r = Math.floor(Math.random() * Math.min(POS.grid.rows, columns[c]?.length ?? 0));
+      const r = Math.floor(Math.random() * Math.min(L.rows, columns[c]?.length ?? 0));
       if (columns[c]?.[r]) spawn('star', colX(c) + (Math.random() - 0.5) * L.tokenW, rowY(r) + (Math.random() - 0.5) * L.tokenW * 0.6, { color: '#fff6b0', size: u * 0.012, life: 0.5, vr: 6 });
     }
     if (shuffleFx.t >= SHUFFLE_TIME) {
       shuffleFx = null;
-      columns.forEach((c, ci) => c.forEach((_, r) => { if (r < POS.grid.rows) burst(colX(ci), rowY(r), '#fff6b0', 4); }));
+      columns.forEach((c, ci) => c.forEach((_, r) => { if (r < L.rows) burst(colX(ci), rowY(r), '#fff6b0', 4); }));
       sfx.hive();
     }
   }
@@ -731,7 +736,7 @@ function smash(p: number, x: number, y: number): void {
 
 function startShuffle(): void {
   const from = new Map<HiveLive, [number, number]>();
-  columns.forEach((c, ci) => c.forEach((h, r) => from.set(h, [colX(ci), rowY(Math.min(r, POS.grid.rows))])));
+  columns.forEach((c, ci) => c.forEach((h, r) => from.set(h, [colX(ci), rowY(Math.min(r, L.rows))])));
   const all = columns.flat();
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -1214,7 +1219,7 @@ function draw(): void {
       const waitingHere = s.wait > 0.9;
       if (s.guard > 0) {
         const [gx0, gy0, gdir] = guardPose(i);
-        beePoses.push({ id: s.guardId, x: gx0 + (x - tx), y: gy0 + (y - L.slotY), s: u * 0.048, color: s.hive.color, flap: time * 46 + i, dir: gdir, scale: easeBack(s.guard) });
+        beePoses.push({ id: s.guardId, x: gx0 + (x - tx), y: gy0 + (y - L.slotY), s: u * 0.041, color: s.hive.color, flap: time * 46 + i, dir: gdir, scale: easeBack(s.guard) });
       }
       if (waitingHere) text(g, '?', x + u * 0.04, y - L.tokenW * 0.8 + Math.sin(time * 6) * u * 0.006, u * 0.045, '#fff', '#3a4b7a');
     }
@@ -1223,7 +1228,7 @@ function draw(): void {
   // waiting hives
   columns.forEach((col, c) => {
     const x = colX(c) + (shake > 0 && shakeCol === c ? Math.sin(time * 60) * u * 0.01 : 0);
-    const rows = POS.grid.rows;
+    const rows = L.rows;
     for (let r = Math.min(col.length, rows) - 1; r >= 0; r--) {
       const tp = tokenPos(col[r], c, r);
       let breathe = r === 0 ? 1 + 0.02 * Math.sin(time * 3 + c) : 1;
@@ -1262,7 +1267,7 @@ function draw(): void {
     if (b.phase === 'back') scale = Math.min(1, Math.hypot(b.x - slotX(b.slot), b.y - L.slotY) / (u * 0.1) + 0.3);
     const land = b.land > 0 ? Math.sin((b.land / 0.14) * Math.PI) : 0;
     beePoses.push({
-      id: beeId(b), x: b.x, y: b.y, s: u * 0.062, color: b.color,
+      id: beeId(b), x: b.x, y: b.y, s: u * 0.053, color: b.color,
       flap: time * (b.phase === 'work' ? 70 : 48) + b.wob, dir: b.dir, stretch: b.stretch * (1 - 0.2 * land),
       lean: b.lean, carry: b.phase === 'home' ? b.carry : -1, sway: Math.sin(time * 5 + b.wob), scale: Math.max(0, scale),
       grip: b.phase === 'work' ? [b.gx - b.x, b.gy - b.y] : null,
@@ -1274,7 +1279,7 @@ function draw(): void {
   drawBoosterFx(g);
   if (armed === 'magnet') {
     const top = L.slotY - L.slotR * 1.45;
-    const rows = Math.min(POS.grid.rows, Math.max(1, ...columns.map((c) => c.length)));
+    const rows = Math.min(L.rows, Math.max(1, ...columns.map((c) => c.length)));
     spotlight(g, [u * 0.02 + L.ox, top, L.u - u * 0.04, rowY(rows - 1) + L.tokenW * 0.62 - top]);
     if (!coachQ.length) bubble(g, 'Pick a hive to fill it at once', L.cx, top - u * 0.05);
   } else if (armed === 'hammer') {
@@ -1651,89 +1656,92 @@ function drawPopup(g: CanvasRenderingContext2D): void {
   const w = L.w;
   const h = L.h;
   const a = Math.min(1, popupT * 4);
-  const pop = Math.max(0, Math.min(1.08, 1 - Math.pow(1 - Math.min(1, popupT * 3.5), 3) * 1.0)) || 0.001;
-  g.fillStyle = `rgba(28,34,44,${0.82 * a})`;
+  // pop in with a little overshoot
+  const k = Math.min(1, popupT * 3.2);
+  const pop = Math.max(0.001, 1 + 2.4 * Math.pow(k - 1, 3) + 1.4 * Math.pow(k - 1, 2));
+  g.fillStyle = `rgba(16,36,70,${0.6 * a})`;
   g.fillRect(0, 0, w, h);
   const cx = L.cx;
-  const bw = u * 0.42;
-  const bh = u * 0.11;
-  const addBtn = (x: number, y: number, label: string, kind: 'green' | 'orange' | 'blue', act: () => void): void => {
-    button(g, x - bw / 2, y - bh / 2, bw, bh, label, kind);
+  const midY = h * 0.47;
+  const bw = u * 0.5;
+  const bh = u * 0.12;
+  const addBtn = (x: number, y: number, label: string, kind: ToyKind, act: () => void): void => {
+    toyButton(g, x, y, bw, bh, label, kind);
     hits.push({ x: x - bw / 2, y: y - bh / 2, w: bw, h: bh, act });
   };
+  const brown = '#5b2e12';
+  const sizes: Record<string, number> = { win: 0.86, lose: 0.74, pause: 0.68, intro: 0.72 };
+  const pw = Math.min(w - u * 0.06, u * 0.86);
+  const ph = u * (sizes[popup ?? 'pause'] ?? 0.72);
+  const top = midY - ph / 2;
+  const titles: Record<string, string> = { win: 'LEVEL COMPLETE!', lose: 'OUT OF SLOTS', pause: 'SETTINGS', intro: 'NEW BOOSTER' };
   g.save();
-  g.translate(cx, h * 0.45);
+  g.translate(cx, midY);
   g.scale(pop, pop);
-  g.translate(-cx, -h * 0.45);
-  if (popup === 'win') {
-    text(g, 'You Win!', cx, h * 0.25, u * 0.13, '#fff36b', '#7a3d00');
-    coinPile(g, cx, h * 0.42, u * 0.22);
-    text(g, 'Rewards', cx, h * 0.56, u * 0.04, '#fff', '');
-    coin(g, cx - u * 0.07, h * 0.6, u * 0.03);
-    text(g, `+${winReward}`, cx + u * 0.03, h * 0.6, u * 0.05, '#fff', '');
-    g.restore();
-    if (popupT > 0.5) addBtn(cx, h * 0.68, level + 1 < LEVEL_COUNT ? `Level ${level + 2}` : 'Play Again', 'green', () => startLevel(level + 1 < LEVEL_COUNT ? level + 1 : 0));
-    return;
-  }
-  // card
-  const cw = Math.min(w - u * 0.08, u * 0.84);
-  const ch = u * 0.78;
-  const cy = h * 0.45 - ch / 2;
-  g.fillStyle = '#2e3a8c';
-  rr(g, cx - cw / 2, cy + u * 0.015, cw, ch, u * 0.06);
-  g.fill();
-  const grad = g.createLinearGradient(0, cy, 0, cy + ch);
-  grad.addColorStop(0, '#fffaf0');
-  grad.addColorStop(1, '#f3e6c8');
-  g.fillStyle = grad;
-  rr(g, cx - cw / 2, cy, cw, ch, u * 0.06);
-  g.fill();
-  // ribbon title
-  const title = popup === 'lose' ? 'Out of Slots!' : popup === 'pause' ? 'Settings' : 'New Booster!';
-  g.fillStyle = '#d4102e';
-  rr(g, cx - cw * 0.42, cy - u * 0.05, cw * 0.84, u * 0.11, u * 0.03);
-  g.fill();
-  text(g, title, cx, cy + u * 0.005, u * 0.065, '#fff', '#7a0818');
+  g.translate(-cx, -midY);
+  panel(g, cx - pw / 2, top, pw, ph);
+  levelSign(g, cx, top + u * 0.005, u * 0.62, u * 0.12, [], titles[popup ?? 'pause'] ?? '');
   g.restore();
-  if (popup === 'lose') {
-    // the stuck hives
-    slots.slice(0, 7).forEach((s, i) => {
-      if (s.hive) hiveToken(g, cx + (i - (slots.length - 1) / 2) * u * 0.115, cy + u * 0.22, u * 0.1, s.hive.color, s.hive.n);
+  if (k < 1) return; // buttons once the card has landed
+
+  if (popup === 'win') {
+    const hy = top + ph * 0.36;
+    sunburst(g, cx, hy, u * 0.3, time);
+    returnHive(g, cx, hy, u * 0.26, u * 0.29, wobble(Math.max(0, 1 - popupT * 2)));
+    for (let i = 0; i < 3; i++) {
+      const sx = cx + (i - 1) * u * 0.17;
+      const sy = top + ph * 0.12 + (i === 1 ? -u * 0.02 : u * 0.015);
+      g.fillStyle = popupT > 0.4 + i * 0.25 ? '#ffd21c' : 'rgba(120,80,40,0.25)';
+      star(g, sx, sy, u * (i === 1 ? 0.06 : 0.048), 0);
+    }
+    label(g, `Level ${level + 1} cleared`, cx, top + ph * 0.6, u * 0.045, brown, '', 0);
+    // reward pill
+    const rw = u * 0.3;
+    const ry = top + ph * 0.7;
+    g.fillStyle = 'rgba(120,80,40,0.18)';
+    rr(g, cx - rw / 2, ry - u * 0.035, rw, u * 0.07, u * 0.035);
+    g.fill();
+    starCoin(g, cx - rw / 2 + u * 0.035, ry, u * 0.04);
+    label(g, `+${winReward}`, cx + u * 0.03, ry + u * 0.003, u * 0.05, brown, '', 0);
+    addBtn(cx, top + ph * 0.86, level + 1 < LEVEL_COUNT ? 'NEXT LEVEL' : 'PLAY AGAIN', 'green', () => startLevel(level + 1 < LEVEL_COUNT ? level + 1 : 0));
+  } else if (popup === 'lose') {
+    // the stuck hives on a soft blue strip
+    const sy = top + ph * 0.3;
+    g.fillStyle = 'rgba(120,190,240,0.35)';
+    rr(g, cx - pw * 0.4, sy - u * 0.075, pw * 0.8, u * 0.15, u * 0.05);
+    g.fill();
+    const n = slots.filter((s) => s.hive).length;
+    let j = 0;
+    slots.forEach((s) => {
+      if (!s.hive) return;
+      hiveToken(g, cx + (j++ - (n - 1) / 2) * u * 0.12, sy, u * 0.1, s.hive.color, s.hive.n, { shadow: false });
     });
-    text(g, 'No screws left for these bees!', cx, cy + u * 0.34, u * 0.042, '#5a4630', '');
-    text(g, 'Add one more slot to keep going?', cx, cy + u * 0.4, u * 0.042, '#5a4630', '');
+    label(g, 'No screws left for these bees!', cx, top + ph * 0.48, u * 0.042, brown, '', 0);
     const ads = !!SDK()?.ads.enabled;
     const canRevive = (ads || revived === 0) && slots.length < MAX_SLOTS;
-    if (canRevive) addBtn(cx, cy + u * 0.53, ads ? '▶ +1 Slot' : '+1 Slot', 'green', () => void revive());
-    addBtn(cx, cy + u * (canRevive ? 0.67 : 0.55), 'Play Again', 'orange', retry);
+    if (canRevive) addBtn(cx, top + ph * 0.64, ads ? '▶ +1 SLOT' : '+1 SLOT', 'green', () => void revive());
+    addBtn(cx, top + ph * (canRevive ? 0.83 : 0.68), 'PLAY AGAIN', 'orange', retry);
   } else if (popup === 'pause') {
-    const row = (y: number, label: string, key: 'sound' | 'haptic'): void => {
-      text(g, label, cx - cw * 0.3, y, u * 0.05, '#4a3a2a', '', 'left');
+    const row = (y: number, name: string, key: 'sound' | 'haptic'): void => {
+      label(g, name, cx - pw * 0.18, y, u * 0.05, brown, '', 0);
       const on = audio.get(key);
-      const tx = cx + cw * 0.2;
-      g.fillStyle = on ? '#3cc248' : '#b9b2a6';
-      rr(g, tx, y - u * 0.03, u * 0.12, u * 0.06, u * 0.03);
-      g.fill();
-      g.fillStyle = '#fff';
-      g.beginPath();
-      g.arc(on ? tx + u * 0.09 : tx + u * 0.03, y, u * 0.024, 0, Math.PI * 2);
-      g.fill();
-      hits.push({ x: tx - u * 0.02, y: y - u * 0.05, w: u * 0.16, h: u * 0.1, act: () => { audio.set(key, !on); sfx.click(); } });
+      const tw = u * 0.14;
+      const tx = cx + pw * 0.14;
+      toggle(g, tx, y, tw, on);
+      hits.push({ x: tx - u * 0.02, y: y - u * 0.05, w: tw + u * 0.04, h: u * 0.1, act: () => { audio.set(key, !on); sfx.click(); } });
     };
-    row(cy + u * 0.17, 'Sound', 'sound');
-    row(cy + u * 0.27, 'Vibration', 'haptic');
-    addBtn(cx, cy + u * 0.43, 'Resume', 'green', () => { popup = null; });
-    addBtn(cx, cy + u * 0.57, 'Restart', 'orange', retry);
+    row(top + ph * 0.25, 'Sound', 'sound');
+    row(top + ph * 0.4, 'Vibration', 'haptic');
+    addBtn(cx, top + ph * 0.6, 'RESUME', 'blue', () => { popup = null; });
+    addBtn(cx, top + ph * 0.8, 'RESTART', 'orange', retry);
   } else if (popup === 'intro' && introKey) {
     const b = BOOSTERS.find((x) => x.key === introKey)!;
-    g.fillStyle = '#3c3f8c';
-    g.beginPath();
-    g.arc(cx, cy + u * 0.25, u * 0.11, 0, Math.PI * 2);
-    g.fill();
-    boosterIcon(g, cx, cy + u * 0.25, u * 0.08, b.icon);
-    text(g, b.title, cx, cy + u * 0.43, u * 0.06, '#d4102e', '');
-    text(g, b.desc, cx, cy + u * 0.51, u * 0.04, '#5a4630', '');
-    addBtn(cx, cy + u * 0.64, 'Got it!', 'green', () => {
+    const by = top + ph * 0.33;
+    sunburst(g, cx, by, u * 0.2, time);
+    boosterButton(g, cx, by, u * 0.12, b.icon, { count: 1 });
+    label(g, b.title, cx, top + ph * 0.56, u * 0.065, '#ffffff', brown, 0.2);
+    label(g, b.desc, cx, top + ph * 0.66, u * 0.04, brown, '', 0);
+    addBtn(cx, top + ph * 0.83, 'GOT IT!', 'green', () => {
       save.seen.push(`b_${b.key}`);
       if (save.boosters[b.key] < 1) save.boosters[b.key] = 1;
       store();
@@ -1876,6 +1884,8 @@ if (import.meta.env.DEV) {
       if (best >= 0) tapColumn(best);
     },
     booster: useBooster,
+    /** open a popup for a look: 'win' | 'lose' | 'pause' | 'intro' */
+    show: (name: Popup, key?: BoosterKey) => { if (key) introKey = key; popup = name; popupT = 0; },
     demo: (on: boolean) => { beeDemo = on; },
     /** replace the save and restart the level (headless tests can't reload the page) */
     setSave: (o: Partial<Save>, lv?: number) => { Object.assign(save, o); store(); popup = null; startLevel(lv ?? level); },

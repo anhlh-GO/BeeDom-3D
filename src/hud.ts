@@ -109,9 +109,9 @@ export function pauseButton(g: C, x: number, y: number, w: number, h: number, pr
 }
 
 /** Wooden sign hanging on two ropes from the top edge, with the level name. */
-export function levelSign(g: C, x: number, y: number, w: number, h: number, ropes: [number, number], text: string, punch = 0): void {
+export function levelSign(g: C, x: number, y: number, w: number, h: number, ropes: number[], text: string, punch = 0): void {
   const top = y - h / 2;
-  // ropes (twisted: light / dark dashes)
+  // ropes (twisted: light / dark dashes); popups pass none
   for (const rx of ropes) {
     g.strokeStyle = '#b48a55';
     g.lineWidth = h * 0.12;
@@ -728,6 +728,116 @@ export function boosterIcon(g: C, x: number, y: number, s: number, icon: Booster
       };
       edged(g, head, gold, '#8a5200', ew * 1.2);
     }
+  }
+  g.restore();
+}
+
+// ------------------------------------------------------------------ popups
+
+/** Popup card: wooden frame (like the pause button / level sign) around a cream panel. */
+export function panel(g: C, x: number, y: number, w: number, h: number): void {
+  const r = Math.min(w, h) * 0.09;
+  g.fillStyle = 'rgba(20,30,60,0.35)';
+  rrect(g, x, y + h * 0.025, w, h, r);
+  g.fill();
+  g.fillStyle = PALETTE.wood[2];
+  rrect(g, x, y + h * 0.012, w, h, r);
+  g.fill();
+  const wood = g.createLinearGradient(0, y, 0, y + h);
+  wood.addColorStop(0, '#cd8c5b');
+  wood.addColorStop(1, '#985830');
+  g.fillStyle = wood;
+  rrect(g, x, y, w, h - h * 0.01, r);
+  g.fill();
+  const m = Math.min(w, h) * 0.045;
+  const cream = g.createLinearGradient(0, y + m, 0, y + h - m);
+  cream.addColorStop(0, PALETTE.cream[0]);
+  cream.addColorStop(1, PALETTE.cream[1]);
+  g.fillStyle = cream;
+  rrect(g, x + m, y + m, w - m * 2, h - m * 2.2, r * 0.7);
+  g.fill();
+  // inner shadow along the top of the cream
+  g.fillStyle = 'rgba(120,70,30,0.12)';
+  rrect(g, x + m, y + m, w - m * 2, m * 0.8, r * 0.5);
+  g.fill();
+  g.fillStyle = 'rgba(255,230,190,0.35)';
+  rrect(g, x + r * 0.6, y + m * 0.25, w - r * 1.2, m * 0.35, m * 0.2);
+  g.fill();
+}
+
+export type ToyKind = 'green' | 'blue' | 'orange';
+const TOY: Record<ToyKind, [string, string, string]> = {
+  green: ['#86ec5c', '#2fae2f', '#17661b'],
+  blue: ['#7fa0ff', '#3a5ff0', '#1d2063'],
+  orange: ['#ffc06a', '#f2780f', '#8a3d05'],
+};
+
+/** Glossy toy-plastic button (booster style): dark rim, bright body, gloss band, outlined label. */
+export function toyButton(g: C, x: number, y: number, w: number, h: number, text: string, kind: ToyKind = 'green', press = 1): void {
+  const [hi, lo, rim] = TOY[kind];
+  g.save();
+  g.translate(x, y);
+  g.scale(press, press);
+  const r = h * 0.42;
+  g.fillStyle = 'rgba(20,30,60,0.3)';
+  rrect(g, -w / 2, -h / 2 + h * 0.14, w, h, r);
+  g.fill();
+  g.fillStyle = rim;
+  rrect(g, -w / 2, -h / 2 + h * 0.07, w, h, r);
+  g.fill();
+  const body = g.createLinearGradient(0, -h / 2, 0, h / 2);
+  body.addColorStop(0, hi);
+  body.addColorStop(1, lo);
+  g.fillStyle = body;
+  rrect(g, -w / 2 + h * 0.05, -h / 2 + h * 0.03, w - h * 0.1, h * 0.92, r * 0.9);
+  g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.3)';
+  rrect(g, -w / 2 + h * 0.25, -h / 2 + h * 0.1, w - h * 0.5, h * 0.24, h * 0.12);
+  g.fill();
+  label(g, text, 0, h * 0.02, h * 0.44, '#ffffff', rim, 0.22);
+  g.restore();
+}
+
+/** On / off switch in the same toy style. */
+export function toggle(g: C, x: number, y: number, w: number, on: boolean): void {
+  const h = w * 0.52;
+  g.fillStyle = on ? '#17661b' : '#8a8f9e';
+  rrect(g, x, y - h / 2 + h * 0.06, w, h, h / 2);
+  g.fill();
+  const t = g.createLinearGradient(0, y - h / 2, 0, y + h / 2);
+  t.addColorStop(0, on ? '#86ec5c' : '#d5d8e0');
+  t.addColorStop(1, on ? '#2fae2f' : '#a9aebb');
+  g.fillStyle = t;
+  rrect(g, x, y - h / 2, w, h, h / 2);
+  g.fill();
+  const kx = on ? x + w - h / 2 : x + h / 2;
+  g.fillStyle = 'rgba(0,0,0,0.2)';
+  g.beginPath();
+  g.arc(kx, y + h * 0.06, h * 0.4, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(kx, y, h * 0.4, 0, Math.PI * 2);
+  g.fill();
+}
+
+/** Soft rotating light rays behind the win hive. */
+export function sunburst(g: C, x: number, y: number, r: number, t: number): void {
+  g.save();
+  g.translate(x, y);
+  g.rotate(t * 0.4);
+  for (let i = 0; i < 12; i++) {
+    g.rotate((Math.PI * 2) / 12);
+    const gr = g.createLinearGradient(0, 0, r, 0);
+    gr.addColorStop(0, 'rgba(255,236,140,0.75)');
+    gr.addColorStop(1, 'rgba(255,236,140,0)');
+    g.fillStyle = gr;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(r, -r * 0.13);
+    g.lineTo(r, r * 0.13);
+    g.closePath();
+    g.fill();
   }
   g.restore();
 }

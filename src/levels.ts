@@ -94,12 +94,12 @@ export const LEVELS: LevelDef[] = [
  * by a breather, while the baseline between spikes slowly drops.
  */
 export const CURVE = [
-  1.0, 1.0, 0.92, 0.88, 0.8,
-  0.72, 0.85, 0.75, 0.68, 0.42,
-  0.9, 0.75, 0.68, 0.6, 0.38,
-  0.88, 0.72, 0.64, 0.56, 0.26,
-  0.85, 0.7, 0.6, 0.52, 0.34,
-  0.82, 0.64, 0.55, 0.45, 0.2,
+  1.0, 1.0, 0.88, 0.8, 0.62,
+  0.72, 0.8, 0.62, 0.55, 0.32,
+  0.8, 0.6, 0.52, 0.45, 0.26,
+  0.75, 0.55, 0.48, 0.42, 0.18,
+  0.72, 0.5, 0.44, 0.38, 0.24,
+  0.68, 0.46, 0.4, 0.32, 0.15,
 ];
 
 export function diffOf(rate: number): LevelSpec['difficulty'] {
@@ -111,14 +111,14 @@ LEVELS.forEach((d, i) => {
   d.diff = diffOf(CURVE[i] ?? 0.7);
   const t = TUNED[i];
   // thicker toys and more screws as the game goes on
-  d.deep = d.deep ?? (i < 2 ? 0 : d.diff === 'super' ? 2 : 1);
-  d.density = Math.min(0.85, d.density + (i < 2 ? 0 : 0.12));
+  d.deep = d.deep ?? (i < 2 ? 0 : d.diff === 'hard' || d.diff === 'super' ? 2 : 1);
+  d.density = Math.min(0.9, d.density + (i < 2 ? 0 : 0.18));
   if (t) { d.seed = t.seed; d.hives = t.hives; d.mix = t.mix; if (t.late) d.late = t.late; }
 });
 
 export const SLOTS = 5;
 const COLS = 4;
-const MAX_HIVES = 20;
+const MAX_HIVES = 24;
 
 const k3 = (c: V3): string => `${c[0]},${c[1]},${c[2]}`;
 const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -348,7 +348,7 @@ function tryGenerate(def: LevelDef, seed: number): LevelSpec | null {
 const INNER: Record<LevelSpec['difficulty'], number> = { easy: 0.5, normal: 0.75, hard: 0.95, super: 1 };
 
 /** Hives per level (more hives than slots is what makes the order matter). */
-export const HIVES: Record<LevelSpec['difficulty'], number> = { easy: 10, normal: 15, hard: 17, super: 18 };
+export const HIVES: Record<LevelSpec['difficulty'], number> = { easy: 12, normal: 16, hard: 19, super: 21 };
 
 /** How many screws trade colours with a random other one (1 = colours all over the model). */
 const SCATTER: Record<LevelSpec['difficulty'], number> = { easy: 0.6, normal: 0.3, hard: 0.15, super: 0.08 };
